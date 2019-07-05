@@ -17,7 +17,7 @@ Shader "Xerxes1138/Iridescence"
 		_eta2("eta2", Range(1.0, 5.0)) = 1.8
 		_eta3("eta3", Range(1.0, 5.0)) = 1.08
 		_kappa3("kappa3", Range(0.0, 5.0)) = 0.51
-		_alpha("alpha", Range(0.01, 1.0)) = 0.07
+		_roughness("roughness", Range(0.01, 1.0)) = 0.07
 		//_IBLTex ("IBL", Cube) = "black" {} // Used to test IS reference, 64 to 128 samples are enough with filtered importance sampling, cube face size is hardcoded at 128px
 	}
 	SubShader
@@ -50,7 +50,7 @@ Shader "Xerxes1138/Iridescence"
 						_eta2,
 						_eta3,
 						_kappa3,
-						_alpha;
+						_roughness;
 
 			#include "Iridescence.cginc"
 
@@ -62,7 +62,7 @@ Shader "Xerxes1138/Iridescence"
 				float eta2 = max(_eta2, 1.000277);
 				float eta3 = max(_eta3, 1.000277);
 				float kappa3 = max(_kappa3, 1e-3);
-				float alpha = max(_alpha, 0.05);
+				float roughness = max(_roughness, 0.05);
 
 				// Force eta_2 -> 1.0 when Dinc -> 0.0
 				float eta_2 = lerp(1.0, eta2, smoothstep(0.0, 0.03, Dinc));
@@ -70,7 +70,9 @@ Shader "Xerxes1138/Iridescence"
 				// Compute dot products
 				float NdotL = /*saturate*/(dot(N, L));
 				float NdotV = /*saturate*/(dot(N, V));
-				if (NdotL < 0 || NdotV < 0) return 0.0;
+				if (NdotL < 0 || NdotV < 0) 
+					return 0.0;
+
 				//H = normalize(L + V);
 				float NdotH = /*saturate*/(dot(N, H));
 				float VdotH = /*saturate*/(dot(V, H));
@@ -117,8 +119,8 @@ Shader "Xerxes1138/Iridescence"
 				I = saturate(mul(I, XYZ_TO_RGB));
 
 				// Microfacet BRDF formula
-				float D = GGX(NdotH, alpha);
-				float G = smithG_GGX(NdotL, NdotV, alpha);
+				float D = GGX(NdotH, roughness);
+				float G = smithG_GGX(NdotL, NdotV, roughness);
 				return (D*G*I) / (4.0 * NdotL * NdotV);
 			}
 
@@ -136,7 +138,7 @@ Shader "Xerxes1138/Iridescence"
 					float eta2 = max(_eta2, 1.000277);
 					float eta3 = max(_eta3, 1.000277);
 					float kappa3 = max(_kappa3, 1e-3);
-					float alpha = max(_alpha, 0.05);
+					float roughness = max(_roughness, 0.05);
 
 					// Force eta_2 -> 1.0 when Dinc -> 0.0
 					float eta_2 = lerp(1.0, eta2, smoothstep(0.0, 0.03, Dinc));
@@ -207,7 +209,7 @@ Shader "Xerxes1138/Iridescence"
 							float eta2 = max(_eta2, 1.000277);
 							float eta3 = max(_eta3, 1.000277);
 							float kappa3 = max(_kappa3, 1e-3);
-							float alpha = max(_alpha, 0.05);
+							float roughness = max(_alpha, 0.05);
 
 							// Force eta_2 -> 1.0 when Dinc -> 0.0
 							float eta_2 = lerp(1.0, eta2, smoothstep(0.0, 0.03, Dinc));
@@ -264,7 +266,7 @@ Shader "Xerxes1138/Iridescence"
 							// Convert back to RGB reflectance
 							I = clamp(mul(I, XYZ_TO_RGB), 0.0, 1.0); 
 
-							float G = G_GGX(alpha, NdotL, NdotV);
+							float G = G_GGX(roughness, NdotL, NdotV);
 
 							SpecularLighting += SampleColor * I * 4.0 * G * NdotL * VdotH / NdotH;	
 						}  
@@ -305,8 +307,8 @@ Shader "Xerxes1138/Iridescence"
 				float3 N = normalize(i.normal);
 				float3 R = reflect(V, N);
 
-                float3 IBL = Integrate_GGXIridescence(_alpha, N, -V, R, 64 /*NumSamples*/, 128 /*cubeface size*/);
-
+                float3 IBL = Integrate_GGXIridescence(_roughness, N, -V, R, 64 /*NumSamples*/, 128 /*cubeface size*/);
+				//IBL = 0;
 				float3 brdf = IBL + BRDF(L, -V, H, N) * saturate(dot(N, L)) * _LightColor0.rgb;
 
 				return float4(brdf, 1.0);
