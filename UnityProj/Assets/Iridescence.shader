@@ -46,10 +46,10 @@ Shader "Xerxes1138/Iridescence"
 
 			half4		_IBLTex_HDR;
 
-			half		_Dinc,
-						_eta2,
+			half		_Dinc,	// D is called the Optical Path Difference
+						_eta2,	// eta means ratio of indices of refraction, but used as IOR
 						_eta3,
-						_kappa3,
+						_kappa3,	// k?
 						_roughness;
 
 			#include "Iridescence.cginc"
