@@ -55,6 +55,35 @@ Shader "Xerxes1138/Iridescence"
 			#include "Iridescence.cginc"
 
 
+			float3 CalcRi(float2 r12, float2 r23, float2 t121, float OPD, float2 phi2)
+			{
+				float3 I = 0.0;
+				float2 R123 = r12 * r23;
+				float2 r123 = sqrt(R123);
+				float2 Rs = sqr(t121) * r23 / (1 - R123);
+
+				// Reflectance term for m=0 (DC term amplitude)
+				float2 C0 = r12 + Rs;
+				float3 S0 = evalSensitivity(0.0, 0.0);
+				I += depol(C0) * S0;
+
+				// Reflectance term for m>0 (pairs of diracs)
+				float2 Cm = Rs - t121;
+				for (int m = 1; m <= 3; ++m)
+				{
+					Cm *= r123;
+					float3 SmS = 2.0 * evalSensitivity(m * OPD, m * phi2.x);
+					float3 SmP = 2.0 * evalSensitivity(m * OPD, m * phi2.y);
+					I += depolColor(Cm.x * SmS, Cm.y * SmP);
+				}
+
+				// Convert back to RGB reflectance
+				I = clamp(mul(I, XYZ_TO_RGB), 0.0, 1.0);
+
+				return I;
+			}
+
+
 			// Main function expected by BRDF Explorer
 			float3 BRDF(float3 L, float3 V, float3 H, float3 N)
 			{
@@ -95,28 +124,7 @@ Shader "Xerxes1138/Iridescence"
 				float2 phi2 = phi21 + phi23;
 
 				// Compound terms
-				float3 I = 0.0;
-				float2 R123 = R12 * R23;
-				float2 r123 = sqrt(R123);
-				float2 Rs = sqr(T121)*R23 / (1 - R123);
-
-				// Reflectance term for m=0 (DC term amplitude)
-				float2 C0 = R12 + Rs;
-				float3 S0 = evalSensitivity(0.0, 0.0);
-				I += depol(C0) * S0;
-
-				// Reflectance term for m>0 (pairs of diracs)
-				float2 Cm = Rs - T121;
-				for (int m = 1; m <= 3; ++m)
-				{
-					Cm *= r123;
-					float3 SmS = 2.0 * evalSensitivity(m*OPD, m*phi2.x);
-					float3 SmP = 2.0 * evalSensitivity(m*OPD, m*phi2.y);
-					I += depolColor(Cm.x*SmS, Cm.y*SmP);
-				}
-
-				// Convert back to RGB reflectance
-				I = saturate(mul(I, XYZ_TO_RGB));
+				float3 I = CalcRi(R12, R23, T121, OPD, phi2);
 
 				// Microfacet BRDF formula
 				float D = GGX(NdotH, roughness);
@@ -163,28 +171,7 @@ Shader "Xerxes1138/Iridescence"
 					float2 phi2 = phi21 + phi23;
 
 					// Compound terms
-					float3 I = 0.0;
-					float2 R123 = R12 * R23;
-					float2 r123 = sqrt(R123);
-					float2 Rs   = sqr(T121)*R23 / (1-R123);
-
-					// Reflectance term for m=0 (DC term amplitude)
-					float2 C0 = R12 + Rs;
-					float3 S0 = evalSensitivity(0.0, 0.0);
-					I += depol(C0) * S0;
-
-					// Reflectance term for m>0 (pairs of diracs)
-					float2 Cm = Rs - T121;
-					for (int m = 1; m <= 3; ++m)
-					{
-						Cm *= r123;
-						float3 SmS = 2.0 * evalSensitivity(m * OPD, m * phi2.x);
-						float3 SmP = 2.0 * evalSensitivity(m * OPD, m * phi2.y);
-						I += depolColor(Cm.x * SmS, Cm.y * SmP);
-					}
-
-					// Convert back to RGB reflectance
-					I = saturate(mul(I, XYZ_TO_RGB)); 
+					float3 I = CalcRi(R12, R23, T121, OPD, phi2);
 
 					SpecularLighting = SampleColor * I;
 				#else // IS
@@ -243,28 +230,7 @@ Shader "Xerxes1138/Iridescence"
 							float2 phi2 = phi21 + phi23;
 
 							// Compound terms
-							float3 I = 0.0;
-							float2 R123 = R12 * R23;
-							float2 r123 = sqrt(R123);
-							float2 Rs   = sqr(T121)*R23 / (1-R123);
-
-							// Reflectance term for m=0 (DC term amplitude)
-							float2 C0 = R12 + Rs;
-							float3 S0 = evalSensitivity(0.0, 0.0);
-							I += depol(C0) * S0;
-
-							// Reflectance term for m>0 (pairs of diracs)
-							float2 Cm = Rs - T121;
-							for (int m = 1; m <= 3; ++m)
-							{
-								Cm *= r123;
-								float3 SmS = 2.0 * evalSensitivity(m * OPD, m * phi2.x);
-								float3 SmP = 2.0 * evalSensitivity(m * OPD, m * phi2.y);
-								I += depolColor(Cm.x * SmS, Cm.y * SmP);
-							}
-
-							// Convert back to RGB reflectance
-							I = clamp(mul(I, XYZ_TO_RGB), 0.0, 1.0); 
+							float3 I = CalcRi(R12, R23, T121, OPD, phi2);
 
 							float G = G_GGX(roughness, NdotL, NdotV);
 
